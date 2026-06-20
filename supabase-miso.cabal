@@ -1,6 +1,6 @@
 cabal-version:      3.0
 name:               supabase-miso
-version:            0.1.0.0
+version:            0.1.0.1
 synopsis:           A Haskell miso client library for supabase.js
 description:        miso integration with supabase.js
 homepage:           https://github.com/haskell-miso/supabase-miso

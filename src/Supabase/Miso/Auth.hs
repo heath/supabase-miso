@@ -6,6 +6,7 @@ module Supabase.Miso.Auth
   ( -- * Functions
     signUpEmail
   , signInWithPassword
+  , signInAnonymously
   , signOut
   , resetPasswordForEmail
   , onAuthStateChange
@@ -21,6 +22,7 @@ module Supabase.Miso.Auth
   , SignUpEmailOptions   (..)
   , SignUpPhoneOptions   (..)
   , SignInCredentials    (..)
+  , SignInAnonymouslyOptions (..)
   , SignOutOptions       (..)
   , SignOutScope         (..)
   , ResetPasswordOptions (..)
@@ -30,6 +32,7 @@ module Supabase.Miso.Auth
   -- * Smart constructors
   , defaultSignUpEmailOptions
   , defaultSignUpPhoneOptions
+  , defaultSignInAnonymouslyOptions
   , defaultSignOutOptions
   , defaultResetPasswordOptions
   -- * Helpers
@@ -85,6 +88,16 @@ defaultSignUpEmailOptions = SignUpEmailOptions Nothing Nothing Nothing
 -----------------------------------------------------------------------------
 defaultSignUpPhoneOptions :: SignUpPhoneOptions
 defaultSignUpPhoneOptions = SignUpPhoneOptions Nothing Nothing Nothing
+-----------------------------------------------------------------------------
+-- | https://supabase.com/docs/reference/javascript/auth-signinanonymously
+data SignInAnonymouslyOptions
+  = SignInAnonymouslyOptions
+  { siaCaptchaToken :: Maybe MisoString
+  , siaData :: Maybe Value
+  } deriving (Show, Eq)
+-----------------------------------------------------------------------------
+defaultSignInAnonymouslyOptions :: SignInAnonymouslyOptions
+defaultSignInAnonymouslyOptions = SignInAnonymouslyOptions Nothing Nothing
 -----------------------------------------------------------------------------
 data SignInCredentials
   = SignInCredentials
@@ -201,6 +214,17 @@ instance ToJSVal SignInCredentials where
     set "password" sicPassword o
     toJSVal o
 -----------------------------------------------------------------------------
+instance ToJSVal SignInAnonymouslyOptions where
+  toJSVal SignInAnonymouslyOptions {..} = do
+    o <- create
+    opts <- create
+    forM_ siaCaptchaToken $ \captchaToken ->
+      set "captchaToken" captchaToken opts
+    forM_ siaData $ \data_ ->
+      flip (set "data") opts =<< toJSVal data_
+    set "options" opts o
+    toJSVal o
+-----------------------------------------------------------------------------
 instance ToJSVal SignOutOptions where
   toJSVal SignOutOptions {..} = do
     o <- create
@@ -271,6 +295,19 @@ signInWithPassword credentials successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
   runSupabase "auth" "signInWithPassword" [credentials] successful_ errorful_
+-----------------------------------------------------------------------------
+signInAnonymously
+  :: SignInAnonymouslyOptions
+  -- ^ Anonymous sign in options (captcha token, user metadata)
+  -> (AuthResponse -> action)
+  -- ^ Success callback
+  -> (MisoString -> action)
+  -- ^ Error callback
+  -> Effect parent props model action
+signInAnonymously options successful errorful = withSink $ \sink -> do
+  successful_ <- successCallback sink errorful successful
+  errorful_ <- errorCallback sink errorful
+  runSupabase "auth" "signInAnonymously" [options] successful_ errorful_
 -----------------------------------------------------------------------------
 signOut
   :: SignOutOptions

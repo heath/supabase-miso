@@ -67,7 +67,7 @@ $ cabal build
 
 - [x] [Create a new user](https://supabase.com/docs/reference/javascript/auth-signup)
 - [x] [Listen to auth events](https://supabase.com/docs/reference/javascript/auth-onauthstatechange)
-- [ ] [Create an anonymous user](https://supabase.com/docs/reference/javascript/auth-signinanonymously)
+- [x] [Create an anonymous user](https://supabase.com/docs/reference/javascript/auth-signinanonymously)
 - [x] [Sign in a user](https://supabase.com/docs/reference/javascript/auth-signinwithpassword)
 - [ ] [Sign in with ID Token](https://supabase.com/docs/reference/javascript/auth-signinwithidtoken)
 - [ ] [Sign in a user through OTP](https://supabase.com/docs/reference/javascript/auth-signinwithotp)
