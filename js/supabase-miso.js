@@ -131,3 +131,20 @@ globalThis["runSupabaseQuery"] = function (
       if (error) errorful(error);
     });
 };
+
+// Supabase Realtime (Postgres Changes)
+globalThis["subscribePostgresChanges"] = function(channelName, table, filter, changeCb, subscribedCb, errorCb) {
+  var opts = { event: '*', schema: 'public', table: table };
+  if (filter && filter !== '') { opts.filter = filter; }
+  var channel = globalThis["supabase"]
+    .channel(channelName)
+    .on('postgres_changes', opts, function(payload) { changeCb(payload); })
+    .subscribe(function(status) {
+      if (status === 'SUBSCRIBED') subscribedCb(channel);
+      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') errorCb(status);
+    });
+};
+
+globalThis["removeChannel"] = function(channel) {
+  globalThis["supabase"].removeChannel(channel);
+};

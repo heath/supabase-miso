@@ -20,8 +20,8 @@ module Supabase.Miso.Core
 -----------------------------------------------------------------------------
 import Miso.JSON
 import Miso.String
-import Miso.DSL
-import Miso.FFI (syncCallback1, File)
+import Miso.DSL hiding (Object)
+import Miso.FFI (asyncCallback1, File)
 -----------------------------------------------------------------------------
 import Control.Monad
 -----------------------------------------------------------------------------
@@ -147,7 +147,7 @@ successCallback
   -> (t -> action)
   -> IO Function
 successCallback sink errorful successful =
-  Function <$> (syncCallback1 $ \result ->
+  Function <$> (asyncCallback1 $ \result ->
     fromJSON <$> fromJSValUnchecked result >>= \case
       Error msg ->
         sink $ errorful (ms msg)
@@ -159,7 +159,7 @@ authStateChangeCallback
   -> (MisoString -> Maybe Value -> action)
   -> IO Function
 authStateChangeCallback sink callback = do
-  Function <$> (syncCallback1 $ \args -> do
+  Function <$> (asyncCallback1 $ \args -> do
     event <- fromJSValUnchecked =<< (args ! "0")
     session <- fromJSValUnchecked =<< (args ! "1")
     sink (callback event session))
@@ -169,7 +169,7 @@ subscriptionCallback
   -> (IO () -> action)
   -> IO Function
 subscriptionCallback sink makeAction = do
-  Function <$> (syncCallback1 $ \result -> do
+  Function <$> (asyncCallback1 $ \result -> do
     -- Extract the unsubscribe function from the subscription object
     unsubscribeFn <- result ! "unsubscribe"
     let unsubscribeAction = void $ call unsubscribeFn result ([] :: [JSVal])
@@ -181,7 +181,7 @@ successCallbackFile
   -> (File -> action)
   -> IO Function
 successCallbackFile sink errorful successful =
-  Function <$> (syncCallback1 $ \result ->
+  Function <$> (asyncCallback1 $ \result ->
     fromJSValUnchecked result >>= sink . successful)
 -----------------------------------------------------------------------------
 errorCallback
@@ -189,10 +189,15 @@ errorCallback
   -> (MisoString -> action)
   -> IO Function
 errorCallback sink errorful =
-  Function <$> (syncCallback1 $ \result -> do
-    fromJSON <$> fromJSValUnchecked result >>= \case
-      Error msg -> do
-        sink $ errorful (ms msg)
-      Success result ->
-        sink (errorful result))
+  Function <$> (asyncCallback1 $ \result -> do
+    val <- fromJSValUnchecked result
+    let msg = case val of
+                String s -> s
+                Object o -> case parseMaybe (.: "message") o of
+                  Just m  -> m
+                  Nothing -> case parseMaybe (.: "code") o of
+                    Just c  -> c
+                    Nothing -> ms (show val)
+                _ -> ms (show val)
+    sink (errorful msg))
 -----------------------------------------------------------------------------

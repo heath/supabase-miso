@@ -25,6 +25,11 @@ module Supabase.Miso.Auth
   , SignInAnonymouslyOptions (..)
   , SignOutOptions       (..)
   , SignOutScope         (..)
+  , Email                (..)
+  , Password             (..)
+  , Phone                (..)
+  , Session              (..)
+  , IdentityData         (..)
   , ResetPasswordOptions (..)
   , AuthChangeEvent      (..)
   , AuthChangeCallback
@@ -80,8 +85,8 @@ data SignUpChannel = SMS | WhatsApp
 -----------------------------------------------------------------------------
 instance ToJSVal SignUpChannel where
   toJSVal = \case
-    SMS -> toJSVal "sms"
-    WhatsApp -> toJSVal "whatsapp"
+    SMS -> toJSVal ("sms" :: MisoString)
+    WhatsApp -> toJSVal ("whatsapp" :: MisoString)
 -----------------------------------------------------------------------------
 defaultSignUpEmailOptions :: SignUpEmailOptions
 defaultSignUpEmailOptions = SignUpEmailOptions Nothing Nothing Nothing
@@ -110,9 +115,9 @@ data SignOutScope = Global | Local | Others
 -----------------------------------------------------------------------------
 instance ToJSVal SignOutScope where
   toJSVal = \case
-    Global -> toJSVal "global"
-    Local -> toJSVal "local"
-    Others -> toJSVal "others"
+    Global -> toJSVal ("global" :: MisoString)
+    Local -> toJSVal ("local" :: MisoString)
+    Others -> toJSVal ("others" :: MisoString)
 -----------------------------------------------------------------------------
 data SignOutOptions
   = SignOutOptions
@@ -370,7 +375,7 @@ data AuthResponse
 data AuthData
   = AuthData
   { adUser    :: User
-  , adSession :: Session
+  , adSession :: Maybe Session
   } deriving (Show)
 -----------------------------------------------------------------------------
 data User
@@ -427,16 +432,16 @@ data Session
   } deriving (Show)
 -----------------------------------------------------------------------------
 instance FromJSON AuthResponse where
-  parseJSON = withObject "AuthResponse" $ \v ->
+  parseJSON v =
     AuthResponse
-      <$> v .: "data"
-      <*> v .: "error"
+      <$> parseJSON v
+      <*> pure Nothing
 -----------------------------------------------------------------------------
 instance FromJSON AuthData where
   parseJSON = withObject "AuthData" $ \v ->
     AuthData
       <$> v .: "user"
-      <*> v .: "session"
+      <*> v .:? "session"
 -----------------------------------------------------------------------------
 instance FromJSON User where
   parseJSON = withObject "User" $ \v ->
@@ -445,20 +450,20 @@ instance FromJSON User where
       <*> v .: "aud"
       <*> v .: "role"
       <*> v .: "email"
-      <*> v .: "email_confirmed_at"
-      <*> v .: "phone"
-      <*> v .: "last_sign_in_at"
+      <*> v .:? "email_confirmed_at"
+      <*> v .:? "phone" .!= ""
+      <*> v .:? "last_sign_in_at"
       <*> v .: "app_metadata"
       <*> v .: "user_metadata"
-      <*> v .: "identities"
+      <*> v .:? "identities" .!= []
       <*> v .: "created_at"
       <*> v .: "updated_at"
 -----------------------------------------------------------------------------
 instance FromJSON AppMetadata where
   parseJSON = withObject "AppMetadata" $ \v ->
     AppMetadata
-      <$> v .: "provider"
-      <*> v .: "providers"
+      <$> v .:? "provider" .!= "anonymous"
+      <*> v .:? "providers" .!= []
 -----------------------------------------------------------------------------
 instance FromJSON Identity where
   parseJSON = withObject "Identity" $ \v ->
@@ -560,7 +565,17 @@ instance ToJSON UTCTime where
   toJSON utcTime = String $ ms (show utcTime)
 -----------------------------------------------------------------------------
 instance FromJSON UTCTime where
-  parseJSON =
-    withText "UTCTime"
-      (parseTimeM True defaultTimeLocale "%Y-%m-%d %H:%M:%S" . fromMisoString)
+  parseJSON = withText "UTCTime" $ \t -> do
+    let s = fromMisoString t
+        formats =
+          [ "%Y-%m-%dT%H:%M:%S%Q%Z"
+          , "%Y-%m-%dT%H:%M:%S%QZ"
+          , "%Y-%m-%dT%H:%M:%SZ"
+          , "%Y-%m-%d %H:%M:%S"
+          ]
+        try [] = fail ("parseTimeM: no parse of " <> show s)
+        try (f:fs) = case parseTimeM True defaultTimeLocale f s of
+          Just x  -> pure x
+          Nothing -> try fs
+    try formats
 -----------------------------------------------------------------------------
