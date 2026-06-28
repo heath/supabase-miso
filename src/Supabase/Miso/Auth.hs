@@ -392,13 +392,13 @@ data User
   , userIdentities       :: [Identity]
   , userCreatedAt        :: UTCTime
   , userUpdatedAt        :: UTCTime
-  } deriving (Show)
+  } deriving (Show, Eq)
 -----------------------------------------------------------------------------
 data AppMetadata
   = AppMetadata
   { amProvider  :: MisoString
   , amProviders :: [MisoString]
-  } deriving (Show)
+  } deriving (Show, Eq)
 -----------------------------------------------------------------------------
 data Identity
   = Identity
@@ -411,7 +411,7 @@ data Identity
   , identityCreatedAt    :: UTCTime
   , identityUpdatedAt    :: UTCTime
   , identityEmail        :: MisoString
-  } deriving (Show)
+  } deriving (Show, Eq)
 -----------------------------------------------------------------------------
 data IdentityData
   = IdentityData
@@ -419,7 +419,7 @@ data IdentityData
   , idEmailVerified  :: Bool
   , idPhoneVerified  :: Bool
   , idSub            :: MisoString
-  } deriving (Show)
+  } deriving (Show, Eq)
 -----------------------------------------------------------------------------
 data Session
   = Session
@@ -429,7 +429,7 @@ data Session
   , sessionExpiresAt    :: Int
   , sessionRefreshToken :: MisoString
   , sessionUser         :: User
-  } deriving (Show)
+  } deriving (Show, Eq)
 -----------------------------------------------------------------------------
 instance FromJSON AuthResponse where
   parseJSON v =
