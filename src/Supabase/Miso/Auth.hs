@@ -10,6 +10,8 @@ module Supabase.Miso.Auth
   , signOut
   , resetPasswordForEmail
   , onAuthStateChange
+  , getSession
+  , getUser
     -- * Types
   , User                 (..)
   , AuthData             (..)
@@ -256,6 +258,20 @@ instance ToJSVal SignUpPhone where
         set "options" opts_ o
       toJSVal o
 -----------------------------------------------------------------------------
+-- Internal wrapper for parsing getSession response ({session: ...})
+newtype SessionResponse = SessionResponse { unSessionResponse :: Maybe Session }
+-----------------------------------------------------------------------------
+instance FromJSON SessionResponse where
+  parseJSON = withObject "SessionResponse" $ \v ->
+    SessionResponse <$> v .:? "session"
+-----------------------------------------------------------------------------
+-- Internal wrapper for parsing getUser response ({user: ...})
+newtype UserResponse = UserResponse { unUserResponse :: Maybe User }
+-----------------------------------------------------------------------------
+instance FromJSON UserResponse where
+  parseJSON = withObject "UserResponse" $ \v ->
+    UserResponse <$> v .:? "user"
+-----------------------------------------------------------------------------
 data SupabaseResult
   = SupabaseResult
   { supabaseData :: Value
@@ -326,6 +342,30 @@ signOut options successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
   runSupabase "auth" "signOut" [options] successful_ errorful_
+-----------------------------------------------------------------------------
+-- | https://supabase.com/docs/reference/javascript/auth-getsession
+getSession
+  :: (Maybe Session -> action)
+  -- ^ Success callback (Nothing if no active session)
+  -> (MisoString -> action)
+  -- ^ Error callback
+  -> Effect parent props model action
+getSession successful errorful = withSink $ \sink -> do
+  successful_ <- successCallback sink errorful (successful . unSessionResponse)
+  errorful_ <- errorCallback sink errorful
+  runSupabase "auth" "getSession" emptyArgs successful_ errorful_
+-----------------------------------------------------------------------------
+-- | https://supabase.com/docs/reference/javascript/auth-getuser
+getUser
+  :: (Maybe User -> action)
+  -- ^ Success callback (Nothing if no authenticated user)
+  -> (MisoString -> action)
+  -- ^ Error callback
+  -> Effect parent props model action
+getUser successful errorful = withSink $ \sink -> do
+  successful_ <- successCallback sink errorful (successful . unUserResponse)
+  errorful_ <- errorCallback sink errorful
+  runSupabase "auth" "getUser" emptyArgs successful_ errorful_
 -----------------------------------------------------------------------------
 resetPasswordForEmail
   :: Email
